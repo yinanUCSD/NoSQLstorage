@@ -1,7 +1,10 @@
+from pybloom import BloomFilter
+
 class Bloomfilter:
-    def __init__(self):
-        pass
+    bf = ""
+    def __init__(self,capacity=1000, error_rate=0.001):
+        self.bf = BloomFilter(capacity=capacity, error_rate=error_rate)
     def add(self, k):
-        pass
+        self.bf.add(k)
     def find(self, k):
-        return False
+        return k in self.bf

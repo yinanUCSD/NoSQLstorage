@@ -23,7 +23,7 @@ class Column:
             if not line:
                 break
             #
-            k, v = line.strip().split()
+            k, v = line.strip().split(',')
             self.indextable[k] = offset
             self.bloomfilter.add(k)
             self.memtable = {}
@@ -125,7 +125,7 @@ class Column:
             if not line:
                 break
             #
-            k, v = line.strip().split()
+            k, v = line.strip().split(',')
             self.indextable[k] = offset
 
     def getSucc(self, k, v):
