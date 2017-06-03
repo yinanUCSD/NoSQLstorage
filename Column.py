@@ -10,26 +10,31 @@ class Column:
     indextable = {}
     memtable = {}
     sstable = ""
-    def __init__(self, sstablepath=None, colname=None, key=None, compression=None):
-        if sstablepath != None:
-            self.sstable = SSTable(sstablepath)
-            if compression == None:
-                self.sstable.open(sstablepath,'r')
-                while True:
-                    offset = self.sstable.tell()
-                    line = self.sstable.readline()
-                    # eof
-                    if not line:
-                        break
-                    #
-                    k,v = line.strip().split()
-                    self.indextable[k] = offset
-                    self.bloomfilter.add(k)
-                    self.memtable = {}
-                self.sstable.close()
-        if colname != None:
-            self.colname = colname  #build new column
-            self.key = key
+    #def __init__(self, sstablepath=None, colname=None, keyname=None, compression=None):
+    def loadFrom(self, sstablepath):
+        self.sstable = SSTable(sstablepath)
+        self.sstable.open(sstablepath, 'r')
+        self.sstablepath = sstablepath
+        while True:
+            # first line should be metadata: keyname, colname
+            offset = self.sstable.tell()
+            line = self.sstable.readline()
+            # eof
+            if not line:
+                break
+            #
+            k, v = line.strip().split()
+            self.indextable[k] = offset
+            self.bloomfilter.add(k)
+            self.memtable = {}
+        self.sstable.close()
+    def newColumn(self, colname, keyname, compression, grouppath):
+        self.colname = colname  # build new column
+        self.keyname = keyname
+        self.grouppath = grouppath
+
+    def save(self):
+        pass
 
     def get(self, k):
         if k in self.memtable:
@@ -65,7 +70,8 @@ class Column:
             # assumption:
             # we dont use lock on memtable, assume that there is only one thread giving get() and set()
         return True
-
+    def listKeys(self, values, keysDomain):  #list keys where value exist in set values and key is in keysDomain, if keysDomain is empty, it means keysDomain = ALL
+        pass
     def dumpMem(self,memtable1):
         # dump
         keys = memtable1.keys().sort()
