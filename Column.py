@@ -46,7 +46,7 @@ class Column:
                 return "not found"
             else:
                 if self.LRU.has(k) == True:
-                    return getSucc(k, self.LRU.find(k))
+                    return getSucc(k, self.LRU.get(k))
                 else:
                     if self.indextable.has(k) == False:
                         return "not found"
