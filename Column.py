@@ -42,7 +42,7 @@ class Column:
                 return "not found"
             return getSucc(k, memtable[k])
         else:
-            if self.bloomfilter.find(k) == false:
+            if self.bloomfilter.find(k) == False:
                 return "not found"
             else:
                 if self.LRU.has(k) == True:
