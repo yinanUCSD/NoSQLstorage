@@ -10,7 +10,7 @@ class Column:
     indextable = {}
     memtable = {}
     sstable = ""
-    def __init__(self, sstablepath=None, colname=None, compression=None):
+    def __init__(self, sstablepath=None, colname=None, key=None, compression=None):
         if sstablepath != None:
             self.sstable = SSTable(sstablepath)
             if compression == None:
@@ -27,10 +27,9 @@ class Column:
                     self.bloomfilter.add(k)
                     self.memtable = {}
                 self.sstable.close()
-        else:
-            self.sstable = SSTable("")
         if colname != None:
             self.colname = colname  #build new column
+            self.key = key
 
     def get(self, k):
         if k in self.memtable:
