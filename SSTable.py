@@ -21,6 +21,8 @@ class SSTable:
         return self.f.read()
 
     # extra operation
+    def getpath(self):
+        return self.path
     def getkv(self,offset=0):
         self.f.seek(offset)
         return self.f.readline().strip().split(',')

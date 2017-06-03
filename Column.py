@@ -108,6 +108,8 @@ class Column:
                 line = self.sstable.readline()
         self.sstable.close()
         fout.close()
+        os.remove(sstable.getpath())
+        os.rename('tmp',sstable.getpath())
 
         # update indextable (tomb will be poped when set "NULL")
         self.sstable.open(mode='r')
