@@ -23,7 +23,7 @@ class Column:
             if not line:
                 break
             #
-            k, v = line.strip().split()
+            k, v = line.strip().split(',')
             self.indextable[k] = offset
             self.bloomfilter.add(k)
             self.memtable = {}
@@ -42,11 +42,11 @@ class Column:
                 return "not found"
             return getSucc(k, memtable[k])
         else:
-            if self.bloomfilter.find(k) == false:
+            if self.bloomfilter.find(k) == False:
                 return "not found"
             else:
                 if self.LRU.has(k) == True:
-                    return getSucc(k, self.LRU.find(k))
+                    return getSucc(k, self.LRU.get(k))
                 else:
                     if self.indextable.has(k) == False:
                         return "not found"
@@ -133,7 +133,7 @@ class Column:
             if not line:
                 break
             #
-            k, v = line.strip().split()
+            k, v = line.strip().split(',')
             self.indextable[k] = offset
 
     def getSucc(self, k, v):
