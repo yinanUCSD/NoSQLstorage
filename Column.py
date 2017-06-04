@@ -16,7 +16,7 @@ class Column:
         self.sstable.open(sstablepath, 'r')
         self.sstablepath = sstablepath
         while True:
-            # first line should be metadata: keyname, colname
+            # first line should be metadata: keyname, colname, tablename
             offset = self.sstable.tell()
             line = self.sstable.readline()
             # eof
@@ -28,11 +28,11 @@ class Column:
             self.bloomfilter.add(k)
             self.memtable = {}
         self.sstable.close()
-    def newColumn(self, colname, keyname, compression, grouppath):
+    def newColumn(self, colname, keyname, compression, grouppath, groupname):
         self.colname = colname  # build new column
         self.keyname = keyname
         self.grouppath = grouppath
-
+        self.groupname = groupname
     def save(self):
         pass
 
@@ -70,7 +70,15 @@ class Column:
             # assumption:
             # we dont use lock on memtable, assume that there is only one thread giving get() and set()
         return True
-    def listKeys(self, values, keysDomain):  #list keys where value exist in set values and key is in keysDomain, if keysDomain is empty, it means keysDomain = ALL
+    def listKeys(self, values=None, keysDomain=None):
+        #list keys where value exist in set values and key is in keysDomain, if keysDomain is empty, it means keysDomain = ALL
+        #if values is empty, list all keys
+        pass
+    def count(self, value):
+        pass
+    def sum(self):
+        pass
+    def max(self):
         pass
     def dumpMem(self,memtable1):
         # dump
