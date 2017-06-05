@@ -5,7 +5,9 @@ class SSTable:
         if sstablepath != None:
             self.path = sstablepath
     # base file operation
-    def open(self, path=self.path, mode='r'):
+    def open(self, path="", mode='r'):
+        if path=="":
+            path = self.path
         self.f = open(path,mode)
     def close(self):
         self.f.close()

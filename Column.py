@@ -10,7 +10,10 @@ class Column:
     indextable = {}
     memtable = {}
     sstable = ""
-    #def __init__(self, sstablepath=None, colname=None, keyname=None, compression=None):
+    def __init__(self, sstablepath=None, colname=None, keyname=None, compression=None, grouppath=None, groupname=None):
+        self.loadFrom(sstablepath)
+        self.newColumn(colname, keyname, compression, grouppath, groupname)
+
     def loadFrom(self, sstablepath):
         self.sstable = SSTable(sstablepath)
         self.sstable.open(sstablepath, 'r')
@@ -28,11 +31,13 @@ class Column:
             self.bloomfilter.add(k)
             self.memtable = {}
         self.sstable.close()
+
     def newColumn(self, colname, keyname, compression, grouppath, groupname):
         self.colname = colname  # build new column
         self.keyname = keyname
         self.grouppath = grouppath
         self.groupname = groupname
+
     def save(self):
         pass
 
