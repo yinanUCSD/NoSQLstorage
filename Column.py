@@ -73,13 +73,65 @@ class Column:
     def listKeys(self, values=None, keysDomain=None):
         #list keys where value exist in set values and key is in keysDomain, if keysDomain is empty, it means keysDomain = ALL
         #if values is empty, list all keys
-        pass
+        keyList = []
+        if len(keysDomain) == 0:
+            keysDomain = set(indextable.keys() + memtable.keys())
+        for k, v in memtable.items():
+            if v in values and k in keysDomain:
+                keyList.append(k)
+
+        self.sstable = open(mode='r')
+        for line in self.sstable.readlines():
+            k, v = line.strip().split(',')
+            if v in values and k in keysDomain and not memtable.has_key(k):
+                keyList.append(k)
+        self.sstable.close()
+        return keyList
+
     def count(self, value):
-        pass
+        count = 0
+        for k, v in memtable.items():
+            if v in values:
+                count += 1
+
+        self.sstable = open(mode='r')
+        for line in self.sstable.readlines():
+            k, v = line.strip().split(',')
+            if v in values and not memtable.has_key(k):
+                count += 1
+        self.sstable.close()
+        return count
+
     def sum(self):
-        pass
+        sums = 0.
+        for k, v in memtable.items():
+            if v != "Null":
+                sums += float(v)
+
+        self.sstable = open(mode='r')
+        for line in self.sstable.readlines():
+            k, v = line.strip().split(',')
+            if not memtable.has_key(k):
+                sums += float(v)            # no tomb in sstable
+        self.sstable.close()
+        return sums
+
     def max(self):
-        pass
+        maxs = "NULL"
+        i = 0
+        # memtable
+        for k, v in memtable.items():
+            if v != "Null":
+                maxs = max(maxs,float(v))
+
+        self.sstable = open(mode='r')
+        for line in self.sstable.readlines():
+            k, v = line.strip().split(',')
+            if not memtable.has_key(k):
+                maxs += max(maxs,float(v))  # no tomb in sstable
+        self.sstable.close()
+        return maxs
+
     def dumpMem(self,memtable1):
         # dump
         keys = memtable1.keys().sort()
