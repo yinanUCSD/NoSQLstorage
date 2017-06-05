@@ -117,8 +117,7 @@ class Column:
         return sums
 
     def max(self):
-        maxs = "NULL"
-        i = 0
+        maxs = float("-inf")
         # memtable
         for k, v in memtable.items():
             if v != "Null":
@@ -128,8 +127,10 @@ class Column:
         for line in self.sstable.readlines():
             k, v = line.strip().split(',')
             if not memtable.has_key(k):
-                maxs += max(maxs,float(v))  # no tomb in sstable
+                maxs = max(maxs,float(v))  # no tomb in sstable
         self.sstable.close()
+        if maxs==float("-inf"):
+            return "NULL"
         return maxs
 
     def dumpMem(self,memtable1):
