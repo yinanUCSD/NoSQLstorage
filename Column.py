@@ -4,7 +4,7 @@ from SSTable import SSTable
 import os
 import os.path
 
-M = 10000
+M = 2
 
 class Column:
     def __init__(self):
@@ -80,7 +80,7 @@ class Column:
         self.LRU.update(k, v)
         if v=="NULL":
             indextable.pop(k)
-        if len(self.memtable) > M:
+        if len(self.memtable) >= M:
             memtable1 = self.memtable
             self.dumpMem(memtable1)  # asynchronously dump
             self.memtable = {}  # can't use memtable.clear() here, otherwise the dumping object will be cleared
@@ -91,9 +91,10 @@ class Column:
         #list keys where value exist in set values and key is in keysDomain, if keysDomain is empty, it means keysDomain = ALL
         #if values is empty, list all keys
         keyList = []
+        if values == None:
+            return keyList
         if keysDomain == None:
             keysDomain = set(self.indextable.keys() + self.memtable.keys())
-            print keysDomain
         for k, v in self.memtable.items():
             if v in values and k in keysDomain:
                 keyList.append(k)
@@ -113,7 +114,7 @@ class Column:
     def count(self, value):
         count = 0
         for k, v in self.memtable.items():
-            if v in values:
+            if v == value:
                 count += 1
 
         self.sstable.open(mode='r')
@@ -123,7 +124,7 @@ class Column:
                 i+=1
                 continue
             k, v = line.strip().split(',')
-            if v in values and not self.memtable.has_key(k):
+            if v == value and not self.memtable.has_key(k):
                 count += 1
         self.sstable.close()
         return count
@@ -169,7 +170,8 @@ class Column:
 
     def dumpMem(self,memtable1):
         # dump
-        keys = memtable1.keys().sort()
+        keys = memtable1.keys()
+        keys.sort()
 
         fout = open('tmp', 'w')
         fout.write(self.keyname+','+self.colname+','+self.groupname+'\n')
@@ -215,6 +217,7 @@ class Column:
 
         # update indextable (tomb will be poped when set "NULL")
         self.sstable.open(mode='r')
+        self.sstable.readline()  # metadata
         while True:
             offset = self.sstable.tell()
             line = self.sstable.readline()
