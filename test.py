@@ -1,7 +1,7 @@
 from Table import Table
 
 t1 = Table()
-t1.newtable(cols=['ID', 'IDE', 'OS'], tablepath='./table1/', tablename='t1')
+t1.newtable(cols=['ID', 'gender', 'OS', 'salary'], tablepath='./table1/', tablename='t1')
 t2 = Table()
 t2.loadFrom(tablepath='./table2/')
 
