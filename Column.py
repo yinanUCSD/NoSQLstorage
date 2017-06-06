@@ -6,20 +6,23 @@ import os.path
 
 class Column:
     M = 10000
-    colname = ""
-    indextable = {}
-    memtable = {}
-    sstable = ""
-    def __init__(self, sstablepath=None, colname=None, keyname=None, compression=None, grouppath=None, groupname=None):
-        self.loadFrom(sstablepath)
-        self.newColumn(colname, keyname, compression, grouppath, groupname)
+
+    #def __init__(self, sstablepath=None, colname=None, keyname=None, compression=None, grouppath=None, groupname=None):
+    #    self.loadFrom(sstablepath)
+    #    self.newColumn(colname, keyname, compression, grouppath, groupname)
 
     def loadFrom(self, sstablepath):
+        if not os.path.exists(sstablepath):
+            fout = open(sstablepath,'w')
+            fout.write(self.keyname+','+self.colname+','+self.groupname+'\n')
+            fout.close()
         self.sstable = SSTable(sstablepath)
         self.sstable.open(sstablepath, 'r')
         self.sstablepath = sstablepath
+
+        self.sstable.readline()  # metadata
         while True:
-            # first line should be metadata: keyname, colname, tablename
+            # first line should be metadata: keyname, colname, groupname
             offset = self.sstable.tell()
             line = self.sstable.readline()
             # eof
@@ -29,7 +32,7 @@ class Column:
             k, v = line.strip().split(',')
             self.indextable[k] = offset
             self.bloomfilter.add(k)
-            self.memtable = {}
+        self.memtable = {}
         self.sstable.close()
 
     def newColumn(self, colname, keyname, compression, grouppath, groupname):
@@ -39,13 +42,14 @@ class Column:
         self.groupname = groupname
 
     def save(self):
-        pass
+        memtable1 = self.memtable
+        dumpMem(memtable1)
 
     def get(self, k):
         if k in self.memtable:
             if self.memtable[k]=='NULL':
                 return "not found"
-            return getSucc(k, memtable[k])
+            return getSucc(k,self.memtable[k])
         else:
             if self.bloomfilter.find(k) == False:
                 return "not found"
@@ -80,43 +84,55 @@ class Column:
         #if values is empty, list all keys
         keyList = []
         if len(keysDomain) == 0:
-            keysDomain = set(indextable.keys() + memtable.keys())
-        for k, v in memtable.items():
+            keysDomain = set(self.indextable.keys() + self.memtable.keys())
+        for k, v in self.memtable.items():
             if v in values and k in keysDomain:
                 keyList.append(k)
 
         self.sstable = open(mode='r')
+        i = 0
         for line in self.sstable.readlines():
+            if i==0:
+                i+=1
+                continue
             k, v = line.strip().split(',')
-            if v in values and k in keysDomain and not memtable.has_key(k):
+            if v in values and k in keysDomain and not self.memtable.has_key(k):
                 keyList.append(k)
         self.sstable.close()
         return keyList
 
     def count(self, value):
         count = 0
-        for k, v in memtable.items():
+        for k, v in self.memtable.items():
             if v in values:
                 count += 1
 
         self.sstable = open(mode='r')
+        i = 0
         for line in self.sstable.readlines():
+            if i==0:
+                i+=1
+                continue
             k, v = line.strip().split(',')
-            if v in values and not memtable.has_key(k):
+            if v in values and not self.memtable.has_key(k):
                 count += 1
         self.sstable.close()
         return count
 
     def sum(self):
         sums = 0.
-        for k, v in memtable.items():
+        for k, v in self.memtable.items():
             if v != "Null":
                 sums += float(v)
 
         self.sstable = open(mode='r')
+        i = 0
         for line in self.sstable.readlines():
+            if i==0:
+                i+=1
+                continue
             k, v = line.strip().split(',')
-            if not memtable.has_key(k):
+            if not self.memtable.has_key(k):
                 sums += float(v)            # no tomb in sstable
         self.sstable.close()
         return sums
@@ -124,14 +140,18 @@ class Column:
     def max(self):
         maxs = float("-inf")
         # memtable
-        for k, v in memtable.items():
+        for k, v in self.memtable.items():
             if v != "Null":
                 maxs = max(maxs,float(v))
 
         self.sstable = open(mode='r')
+        i = 0
         for line in self.sstable.readlines():
+            if i==0:
+                i+=1
+                continue
             k, v = line.strip().split(',')
-            if not memtable.has_key(k):
+            if not self.memtable.has_key(k):
                 maxs = max(maxs,float(v))  # no tomb in sstable
         self.sstable.close()
         if maxs==float("-inf"):
@@ -143,8 +163,10 @@ class Column:
         keys = memtable1.keys().sort()
 
         fout = open('tmp', 'w')
+        fout.write(self.keyname+','+self.colname+','+self.groupname+'\n')
         self.sstable.open(mode='r')
 
+        line = self.sstable.readline()  # metadata
         line = self.sstable.readline()
         i = 0
         while True:
@@ -179,8 +201,8 @@ class Column:
                 line = self.sstable.readline()
         self.sstable.close()
         fout.close()
-        os.remove(sstable.getpath())
-        os.rename('tmp',sstable.getpath())
+        os.remove(self.sstable.getpath())
+        os.rename('tmp',self.sstable.getpath())
 
         # update indextable (tomb will be poped when set "NULL")
         self.sstable.open(mode='r')
