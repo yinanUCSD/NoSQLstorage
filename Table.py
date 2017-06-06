@@ -1,5 +1,6 @@
 from Column import Column
 import glob
+import os
 class Table:
     def __init__(self):
         self.columns = {}
@@ -15,11 +16,11 @@ class Table:
             key=cols[0]
             self.key = key
             self.tablename = tablename
+            os.mkdir(tablepath)
             for col in cols[1:]:
                 column = Column()
                 column.newColumn(colname=col, keyname=key, compression=compression, grouppath=tablepath, groupname=tablename)
                 self.columns[col] = column
-
     def save(self):
         for col in self.columns:
             self.columns[col].save()
