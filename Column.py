@@ -4,12 +4,14 @@ from SSTable import SSTable
 import os
 import os.path
 
-class Column:
-    M = 10000
+M = 10000
 
-    #def __init__(self, sstablepath=None, colname=None, keyname=None, compression=None, grouppath=None, groupname=None):
-    #    self.loadFrom(sstablepath)
-    #    self.newColumn(colname, keyname, compression, grouppath, groupname)
+class Column:
+    def __init__(self):
+        self.indextable = {}
+        self.memtable = {}
+        self.bloomfilter = Bloomfilter()
+        self.LRU = LRU()
 
     def loadFrom(self, sstablepath):
         if not os.path.exists(sstablepath):
@@ -32,7 +34,6 @@ class Column:
             k, v = line.strip().split(',')
             self.indextable[k] = offset
             self.bloomfilter.add(k)
-        self.memtable = {}
         self.sstable.close()
 
     def newColumn(self, colname, keyname, compression, grouppath, groupname):
@@ -41,30 +42,37 @@ class Column:
         self.grouppath = grouppath
         self.groupname = groupname
 
+        sstablepath = grouppath+groupname+'_'+colname+'.sstb'
+        self.sstable = SSTable(sstablepath)
+
+        fout = open(sstablepath, 'w')
+        fout.write(self.keyname + ',' + self.colname + ',' + self.groupname + '\n')
+        fout.close()
+
     def save(self):
         memtable1 = self.memtable
-        dumpMem(memtable1)
+        self.dumpMem(memtable1)
 
     def get(self, k):
         if k in self.memtable:
             if self.memtable[k]=='NULL':
                 return "not found"
-            return getSucc(k,self.memtable[k])
+            return self.getSucc(k,self.memtable[k])
         else:
             if self.bloomfilter.find(k) == False:
                 return "not found"
             else:
                 if self.LRU.has(k) == True:
-                    return getSucc(k, self.LRU.get(k))
+                    return self.getSucc(k, self.LRU.get(k))
                 else:
                     if self.indextable.has(k) == False:
                         return "not found"
                     else:
                         offset = self.indextable.find(k)
-                        self.sstable = open(mode='r')
+                        self.sstable.open(mode='r')
                         v = self.sstable.getv(offset)
                         self.sstable.close()
-                        return getSucc(k, v)
+                        return self.getSucc(k, v)
 
     def set(self, k, v):
         self.memtable[k] = v
@@ -72,7 +80,7 @@ class Column:
         self.LRU.update(k, v)
         if v=="NULL":
             indextable.pop(k)
-        if self.memtable.size() > M:
+        if len(self.memtable) > M:
             memtable1 = self.memtable
             self.dumpMem(memtable1)  # asynchronously dump
             self.memtable = {}  # can't use memtable.clear() here, otherwise the dumping object will be cleared
@@ -83,13 +91,14 @@ class Column:
         #list keys where value exist in set values and key is in keysDomain, if keysDomain is empty, it means keysDomain = ALL
         #if values is empty, list all keys
         keyList = []
-        if len(keysDomain) == 0:
+        if keysDomain == None:
             keysDomain = set(self.indextable.keys() + self.memtable.keys())
+            print keysDomain
         for k, v in self.memtable.items():
             if v in values and k in keysDomain:
                 keyList.append(k)
 
-        self.sstable = open(mode='r')
+        self.sstable.open(mode='r')
         i = 0
         for line in self.sstable.readlines():
             if i==0:
@@ -107,7 +116,7 @@ class Column:
             if v in values:
                 count += 1
 
-        self.sstable = open(mode='r')
+        self.sstable.open(mode='r')
         i = 0
         for line in self.sstable.readlines():
             if i==0:
@@ -125,7 +134,7 @@ class Column:
             if v != "Null":
                 sums += float(v)
 
-        self.sstable = open(mode='r')
+        self.sstable.open(mode='r')
         i = 0
         for line in self.sstable.readlines():
             if i==0:
@@ -144,7 +153,7 @@ class Column:
             if v != "Null":
                 maxs = max(maxs,float(v))
 
-        self.sstable = open(mode='r')
+        self.sstable.open(mode='r')
         i = 0
         for line in self.sstable.readlines():
             if i==0:
@@ -222,4 +231,4 @@ class Column:
 
     def close(self):
         memtable1 = self.memtable
-        dumpMem(memtable1)
+        self.dumpMem(memtable1)
