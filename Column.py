@@ -91,13 +91,16 @@ class Column:
         #list keys where value exist in set values and key is in keysDomain, if keysDomain is empty, it means keysDomain = ALL
         #if values is empty, list all keys
         keyList = []
-        if values == None:
+        if values == None or len(values)==0:
             return list(set(self.indextable.keys() + self.memtable.keys()))
-        if keysDomain == None:
-            keysDomain = set(self.indextable.keys() + self.memtable.keys())
-        for k, v in self.memtable.items():
-            if v in values and k in keysDomain:
-                keyList.append(k)
+        if keysDomain == None or len(keysDomain)==0:
+            for k, v in self.memtable.items():
+                if v in values:
+                    keyList.append(k)
+        else :
+            for k, v in self.memtable.items():
+                if v in values and k in keysDomain:
+                    keyList.append(k)
 
         self.sstable.open(mode='r')
         i = 0
