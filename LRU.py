@@ -1,7 +1,8 @@
 import collections
 
+size = 10000
+
 class LRU:
-    size = 0
     cache = {}
     def __init__(self):
         self.size = size
