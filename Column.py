@@ -92,7 +92,7 @@ class Column:
         #if values is empty, list all keys
         keyList = []
         if values == None:
-            return keyList
+            return list(set(self.indextable.keys() + self.memtable.keys()))
         if keysDomain == None:
             keysDomain = set(self.indextable.keys() + self.memtable.keys())
         for k, v in self.memtable.items():
