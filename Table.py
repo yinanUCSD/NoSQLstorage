@@ -42,6 +42,9 @@ class Table:
         for key in keys:
             row = []
             for col in cols:
+                if col == self.key:
+                    row.append(key)
+                    continue
                 row.append(self.columns[col].get(key))
             res.append(row)
         return res
