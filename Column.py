@@ -3,8 +3,10 @@ from Bloomfilter import Bloomfilter
 from SSTable import SSTable
 import os
 import os.path
+import zlib
 
-M = 2
+M = 20
+B = 10
 
 class Column:
     def __init__(self):
@@ -18,22 +20,28 @@ class Column:
             fout = open(sstablepath,'w')
             fout.write(self.keyname+','+self.colname+','+self.groupname+'\n')
             fout.close()
-        self.sstable = SSTable(sstablepath)
+        self.sstable = SSTable(sstablepath,compressed=1)
         self.sstable.open(sstablepath, 'r')
         self.sstablepath = sstablepath
 
-        self.sstable.readline()  # metadata
+        # first line should be metadata: keyname, colname, groupname
+        self.keyname,self.colname,self.groupname = self.sstable.readline().strip().split()  # metadata
         while True:
-            # first line should be metadata: keyname, colname, groupname
             offset = self.sstable.tell()
-            line = self.sstable.readline()
+            block = self.sstable.readblock()
             # eof
-            if not line:
+            if len(block) == 0:
                 break
             #
-            k, v = line.strip().split(',')
-            self.indextable[k] = offset
-            self.bloomfilter.add(k)
+            for i in range(len(block)):
+                k, v = block[i].strip().split(',')
+                self.indextable[k] = offset
+                self.bloomfilter.add(k)
+            # eof
+            if len(block) < B:
+                break
+            #
+
         self.sstable.close()
 
     def newColumn(self, colname, keyname, compression, grouppath, groupname):
@@ -43,7 +51,7 @@ class Column:
         self.groupname = groupname
 
         sstablepath = grouppath+groupname+'_'+colname+'.sstb'
-        self.sstable = SSTable(sstablepath)
+        self.sstable = SSTable(sstablepath,compressed=1)
 
         fout = open(sstablepath, 'w')
         fout.write(self.keyname + ',' + self.colname + ',' + self.groupname + '\n')
@@ -70,7 +78,7 @@ class Column:
                     else:
                         offset = self.indextable.find(k)
                         self.sstable.open(mode='r')
-                        v = self.sstable.getv(offset)
+                        v = self.sstable.getv(offset,k)
                         self.sstable.close()
                         return self.getSucc(k, v)
 
@@ -93,6 +101,7 @@ class Column:
         keyList = []
         if values == None or len(values)==0:
             return list(set(self.indextable.keys() + self.memtable.keys()))
+        # memtable
         if keysDomain == None or len(keysDomain)==0:
             for k, v in self.memtable.items():
                 if v in values:
@@ -101,16 +110,20 @@ class Column:
             for k, v in self.memtable.items():
                 if v in values and k in keysDomain:
                     keyList.append(k)
-
+        # sstable
         self.sstable.open(mode='r')
-        i = 0
-        for line in self.sstable.readlines():
-            if i==0:
-                i+=1
-                continue
+        self.sstable.readline0()  # metadata
+        while True:
+            line = self.sstable.readline()
+            if not line:
+                break
             k, v = line.strip().split(',')
-            if v in values and k in keysDomain and not self.memtable.has_key(k):
-                keyList.append(k)
+            if keysDomain == None or len(keysDomain)==0:
+                if v in values and not self.memtable.has_key(k):
+                    keyList.append(k)
+            else :
+                if v in values and k in keysDomain and not self.memtable.has_key(k):
+                    keyList.append(k)
         self.sstable.close()
         return keyList
 
@@ -121,11 +134,11 @@ class Column:
                 count += 1
 
         self.sstable.open(mode='r')
-        i = 0
-        for line in self.sstable.readlines():
-            if i==0:
-                i+=1
-                continue
+        self.sstable.readline0()  # metadata
+        while True:
+            line = self.sstable.readline()
+            if not line:
+                break
             k, v = line.strip().split(',')
             if v == value and not self.memtable.has_key(k):
                 count += 1
@@ -139,11 +152,11 @@ class Column:
                 sums += float(v)
 
         self.sstable.open(mode='r')
-        i = 0
-        for line in self.sstable.readlines():
-            if i==0:
-                i+=1
-                continue
+        self.sstable.readline0()  # metadata
+        while True:
+            line = self.sstable.readline()
+            if not line:
+                break
             k, v = line.strip().split(',')
             if not self.memtable.has_key(k):
                 sums += float(v)            # no tomb in sstable
@@ -158,11 +171,11 @@ class Column:
                 maxs = max(maxs,float(v))
 
         self.sstable.open(mode='r')
-        i = 0
-        for line in self.sstable.readlines():
-            if i==0:
-                i+=1
-                continue
+        self.sstable.readline0()    # metadata
+        while True:
+            line = self.sstable.readline()
+            if not line:
+                break
             k, v = line.strip().split(',')
             if not self.memtable.has_key(k):
                 maxs = max(maxs,float(v))  # no tomb in sstable
@@ -171,7 +184,7 @@ class Column:
             return "NULL"
         return maxs
 
-    def dumpMem(self,memtable1):
+    def dumpMem0(self,memtable1):
         # dump
         keys = memtable1.keys()
         keys.sort()
@@ -230,6 +243,74 @@ class Column:
             #
             k, v = line.strip().split(',')
             self.indextable[k] = offset
+
+    def dumpMem(self,memtable1):
+        # dump
+        keys = memtable1.keys()
+        keys.sort()
+
+        fout = SSTable('tmp',compressed=1)
+        fout.open(mode='w')
+        fout.write0(self.keyname+','+self.colname+','+self.groupname+'\n')  # metadata
+        self.sstable.open(mode='r')
+
+        line = self.sstable.readline0()  # metadata
+        line = self.sstable.readline()
+        i = 0
+        while True:
+            # memtable ends
+            if i>=len(keys):
+                if not line:    # both ends
+                    break
+                k2,v2 = line.strip().split(',')
+                fout.write(k2 + ',' + v2 + '\n')
+                line = self.sstable.readline()
+                continue
+            k1, v1 = keys[i], memtable1[keys[i]]
+            # sstable ends
+            if not line:
+                if v1!="NULL":
+                    fout.write(k1+ ','+v1+'\n')
+                i += 1
+                continue
+            k2, v2 = line.strip().split(',')
+            # none ends
+            if k1==k2:  # throw k2,v2, write k1,v1
+                if v1!="NULL":
+                    fout.write(k1+ ','+v1+'\n')
+                i += 1
+                line = self.sstable.readline()
+            elif k1<k2:
+                if v1!="NULL":
+                    fout.write(k1+ ','+v1+'\n')
+                i += 1
+            elif k1>k2:
+                fout.write(k2+','+v2+'\n')
+                line = self.sstable.readline()
+        self.sstable.close()
+        fout.close()
+        os.remove(self.sstable.getpath())
+        os.rename('tmp',self.sstable.getpath())
+
+        # update indextable (tomb will be poped when set "NULL")
+        self.sstable.open(mode='r')
+        self.sstable.readline0()  # metadata
+        while True:
+            offset = self.sstable.tell()
+            block = self.sstable.readblock()
+            #print block
+            # eof
+            if len(block)==0:
+                break
+            #
+            for i in range(len(block)):
+                k,v = block[i].strip().split(',')
+                self.indextable[k] = offset
+            # eof
+            if len(block)<B:
+                break
+            #
+        self.sstable.close()
 
     def getSucc(self, k, v):
         self.LRU.update(k, v)
