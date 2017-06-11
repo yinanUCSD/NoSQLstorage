@@ -20,7 +20,7 @@ class Column:
             fout = open(sstablepath,'w')
             fout.write(self.keyname+','+self.colname+','+self.groupname+'\n')
             fout.close()
-        self.sstable = SSTable(sstablepath,compressed=1)
+        self.sstable = SSTable(sstablepath,compressed=0)
         self.sstable.open(sstablepath, 'r')
         self.sstablepath = sstablepath
 
@@ -51,7 +51,7 @@ class Column:
         self.groupname = groupname
 
         sstablepath = grouppath+groupname+'_'+colname+'.sstb'
-        self.sstable = SSTable(sstablepath,compressed=1)
+        self.sstable = SSTable(sstablepath,compressed=0)
 
         fout = open(sstablepath, 'w')
         fout.write(self.keyname + ',' + self.colname + ',' + self.groupname + '\n')
@@ -249,7 +249,7 @@ class Column:
         keys = memtable1.keys()
         keys.sort()
 
-        fout = SSTable('tmp',compressed=1)
+        fout = SSTable('tmp',compressed=0)
         fout.open(mode='w')
         fout.write0(self.keyname+','+self.colname+','+self.groupname+'\n')  # metadata
         self.sstable.open(mode='r')
