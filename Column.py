@@ -22,6 +22,7 @@ class Column:
             fout.close()
         self.sstable = SSTable(sstablepath,compressed)
 
+
         self.sstable.open(sstablepath, 'r')
         self.sstablepath = sstablepath
         self.compressed = compressed
@@ -53,11 +54,9 @@ class Column:
         self.groupname = groupname
         self.compressed = compressed
         sstablepath = grouppath+groupname+'_'+colname+'.sstb'
-<<<<<<< HEAD
+
         self.sstable = SSTable(sstablepath,compressed)
-=======
-        self.sstable = SSTable(sstablepath,compressed=0)
->>>>>>> 66ebfc1a01171ae1767b9dcfc521680b158d24d9
+
 
         fout = open(sstablepath, 'w')
         fout.write(self.keyname + ',' + self.colname + ',' + self.groupname + '\n')
@@ -255,6 +254,7 @@ class Column:
         keys.sort()
 
         fout = SSTable('tmp',compressed=self.compressed)
+
 
         fout.open(mode='w')
         fout.write0(self.keyname+','+self.colname+','+self.groupname+'\n')  # metadata
