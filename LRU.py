@@ -1,6 +1,6 @@
 import collections
 
-size = 10000
+size = 1000
 
 class LRU:
     cache = {}

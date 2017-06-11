@@ -59,7 +59,7 @@ class SSTable:
                     return self.block
                 self.block.append(line.strip())
             return self.block
-        else :
+        else:
             block = self.f.readline()
             if not block:
                 return []   # eof, block=''

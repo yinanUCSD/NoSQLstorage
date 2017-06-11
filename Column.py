@@ -5,8 +5,8 @@ import os
 import os.path
 import zlib
 
-M = 20
-B = 10
+M = 2000
+B = 100
 
 class Column:
     def __init__(self):
@@ -15,17 +15,18 @@ class Column:
         self.bloomfilter = Bloomfilter()
         self.LRU = LRU()
 
-    def loadFrom(self, sstablepath):
+    def loadFrom(self, sstablepath, compressed):
         if not os.path.exists(sstablepath):
             fout = open(sstablepath,'w')
             fout.write(self.keyname+','+self.colname+','+self.groupname+'\n')
             fout.close()
-        self.sstable = SSTable(sstablepath,compressed=1)
+        self.sstable = SSTable(sstablepath,compressed)
         self.sstable.open(sstablepath, 'r')
         self.sstablepath = sstablepath
-
+        self.compressed = compressed
         # first line should be metadata: keyname, colname, groupname
-        self.keyname,self.colname,self.groupname = self.sstable.readline().strip().split()  # metadata
+        firstline = self.sstable.readline().strip().split(',')
+        self.keyname,self.colname,self.groupname = firstline[0], firstline[1], firstline[2]  # metadata
         while True:
             offset = self.sstable.tell()
             block = self.sstable.readblock()
@@ -44,14 +45,14 @@ class Column:
 
         self.sstable.close()
 
-    def newColumn(self, colname, keyname, compression, grouppath, groupname):
+    def newColumn(self, colname, keyname, compressed, grouppath, groupname):
         self.colname = colname  # build new column
         self.keyname = keyname
         self.grouppath = grouppath
         self.groupname = groupname
-
+        self.compressed = compressed
         sstablepath = grouppath+groupname+'_'+colname+'.sstb'
-        self.sstable = SSTable(sstablepath,compressed=1)
+        self.sstable = SSTable(sstablepath,compressed)
 
         fout = open(sstablepath, 'w')
         fout.write(self.keyname + ',' + self.colname + ',' + self.groupname + '\n')
@@ -60,7 +61,6 @@ class Column:
     def save(self):
         memtable1 = self.memtable
         self.dumpMem(memtable1)
-
     def get(self, k):
         if k in self.memtable:
             if self.memtable[k]=='NULL':
@@ -73,10 +73,10 @@ class Column:
                 if self.LRU.has(k) == True:
                     return self.getSucc(k, self.LRU.get(k))
                 else:
-                    if self.indextable.has(k) == False:
+                    if k not in self.indextable:
                         return "not found"
                     else:
-                        offset = self.indextable.find(k)
+                        offset = self.indextable[k]
                         self.sstable.open(mode='r')
                         v = self.sstable.getv(offset,k)
                         self.sstable.close()
@@ -87,7 +87,7 @@ class Column:
         self.bloomfilter.add(k)
         self.LRU.update(k, v)
         if v=="NULL":
-            indextable.pop(k)
+            self.indextable.pop(k)
         if len(self.memtable) >= M:
             memtable1 = self.memtable
             self.dumpMem(memtable1)  # asynchronously dump
@@ -249,7 +249,7 @@ class Column:
         keys = memtable1.keys()
         keys.sort()
 
-        fout = SSTable('tmp',compressed=1)
+        fout = SSTable('tmp',compressed=self.compressed)
         fout.open(mode='w')
         fout.write0(self.keyname+','+self.colname+','+self.groupname+'\n')  # metadata
         self.sstable.open(mode='r')

@@ -4,15 +4,15 @@ import os
 class Table:
     def __init__(self):
         self.columns = {}
-    def loadFrom(self, tablepath):
-        for colfile in glob.glob(tablepath + '*.sstb'):
+    def loadFrom(self, tablepath, compressed):
+        for colfile in glob.glob(tablepath + '*'):
             column = Column()
-            column.loadFrom(colfile)
+            column.loadFrom(colfile, compressed=compressed)
             self.columns[column.colname] = column
             self.key = column.keyname
             self.tablename = column.groupname
 
-    def newtable(self, cols, tablepath, tablename, compression=None):
+    def newtable(self, cols, tablepath, tablename, compressed):
             key=cols[0]
             self.key = key
             self.tablename = tablename
@@ -20,7 +20,7 @@ class Table:
                 os.mkdir(tablepath)
             for col in cols[1:]:
                 column = Column()
-                column.newColumn(colname=col, keyname=key, compression=compression, grouppath=tablepath, groupname=tablename)
+                column.newColumn(colname=col, keyname=key, compressed=compressed, grouppath=tablepath, groupname=tablename)
                 self.columns[col] = column
     def save(self):
         for col in self.columns:
