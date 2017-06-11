@@ -23,6 +23,7 @@ class Column:
         self.sstable = SSTable(sstablepath,compressed)
 
 
+
         self.sstable.open(sstablepath, 'r')
         self.sstablepath = sstablepath
         self.compressed = compressed
@@ -56,6 +57,7 @@ class Column:
         sstablepath = grouppath+groupname+'_'+colname+'.sstb'
 
         self.sstable = SSTable(sstablepath,compressed)
+
 
 
         fout = open(sstablepath, 'w')
@@ -254,6 +256,7 @@ class Column:
         keys.sort()
 
         fout = SSTable('tmp',compressed=self.compressed)
+
 
 
         fout.open(mode='w')
