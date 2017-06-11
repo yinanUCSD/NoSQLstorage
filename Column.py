@@ -1,12 +1,12 @@
 from LRU import LRU
 from Bloomfilter import Bloomfilter
 from SSTable import SSTable
+from SSTable import B
 import os
 import os.path
 import zlib
 
 M = 2000
-B = 100
 
 class Column:
     def __init__(self):
