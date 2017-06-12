@@ -1,6 +1,6 @@
 import zlib
 
-B = 100
+B = 200
 
 class SSTable:
     def __init__(self, sstablepath=None,compressed=0):

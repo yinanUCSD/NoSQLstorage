@@ -39,7 +39,7 @@ class Table:
         for colname in where:
             if colname == self.key:
                 continue
-            keys = self.columns[colname].listKeys(values=set([where[colname]]), keysDomain=keys)
+            keys = self.columns[colname].listKeys(values=set(where[colname]), keysDomain=keys)
         res = []
         for key in keys:
             row = []

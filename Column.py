@@ -6,7 +6,7 @@ import os
 import os.path
 import zlib
 
-M = 2000
+M = 20000
 
 class Column:
     def __init__(self):
